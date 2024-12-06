@@ -342,7 +342,7 @@ func (s *ServiceDiscoveryRegistry) findMappedServices(url *common.URL, listener 
 	}
 	if listener != nil {
 		protocolServiceKey := url.ServiceKey() + ":" + url.Protocol
-		s.serviceMappingListeners[protocolServiceKey] = listener
+		s.setListener(protocolServiceKey, listener)
 	}
 	return serviceNames
 }
@@ -353,9 +353,28 @@ var (
 
 func (s *ServiceDiscoveryRegistry) stopListen(url *common.URL) {
 	protocolServiceKey := url.ServiceKey() + ":" + url.Protocol
-	listener := s.serviceMappingListeners[protocolServiceKey]
+	listener, _ := s.getListener(protocolServiceKey)
 	if listener != nil {
-		delete(s.serviceMappingListeners, protocolServiceKey)
+		s.delListener(protocolServiceKey)
 		listener.Stop()
 	}
+}
+
+func (s *ServiceDiscoveryRegistry) getListener(protocolServiceKey string) (registry.MappingListener, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	listener, ok := s.serviceMappingListeners[protocolServiceKey]
+	return listener, ok
+}
+
+func (s *ServiceDiscoveryRegistry) setListener(protocolServiceKey string, listener registry.MappingListener) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.serviceMappingListeners[protocolServiceKey] = listener
+}
+
+func (s *ServiceDiscoveryRegistry) delListener(protocolServiceKey string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	delete(s.serviceMappingListeners, protocolServiceKey)
 }

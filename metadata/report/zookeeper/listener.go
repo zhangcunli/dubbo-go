@@ -37,6 +37,7 @@ import (
 // CacheListener defines keyListeners and rootPath
 type CacheListener struct {
 	// key is zkNode Path and value is set of listeners
+	lock            sync.RWMutex
 	keyListeners    sync.Map
 	zkEventListener *zookeeper.ZkEventListener
 	rootPath        string
@@ -56,6 +57,8 @@ func (l *CacheListener) AddListener(key string, listener registry.MappingListene
 	if err != nil {
 		return
 	}
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	listeners, loaded := l.keyListeners.LoadOrStore(key, map[registry.MappingListener]struct{}{listener: {}})
 	if loaded {
 		listeners.(map[registry.MappingListener]struct{})[listener] = struct{}{}
